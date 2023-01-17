@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export TMPDIR="${TMPDIR:-/tmp}"
+
+# Print the last exit code if it isn't 0 when this process exits
+trap 'on_exit' EXIT
+
+# The first argument is a path to the directory containing the build's full set of sources.
+source_dir=$1
+cd "$source_dir"
+
+payload=$(mktemp "$TMPDIR/kubernetes-resource-request.XXXXXX")
+KUBECONFIG="$(mktemp "$TMPDIR/kubernetes-resource-kubeconfig.XXXXXX")"
+export KUBECONFIG
+
+cat > "$payload" <&0
+
+AWS_ACCESS_KEY_ID=$(jq -r '.source.aws_access_key_id // ""' < "$payload")
+export AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=$(jq -r '.source.aws_secret_access_key // ""' < "$payload")
+export AWS_SECRET_ACCESS_KEY
+
+setup_kube() {
+  local payload
+  payload=$1
+
+  # Setup kubeconfig via aws-cli
+  local aws_eks_cluster_name
+  aws_eks_cluster_name="$(jq -r '.source.eks_cluster_name // ""' < "$payload")"
+  local aws_eks_region
+  aws_eks_region="$(jq -r '.source.eks_region // ""' < "$payload")"
+
+  if [[ -n "$aws_eks_cluster_name" && -n "$aws_eks_region" ]]; then
+    aws eks --region "$aws_eks_region" update-kubeconfig --name "$aws_eks_cluster_name"
+  fi
+
+  # Optional. The namespace scope. Defaults to default if doesn't specify in kubeconfig.
+  local namespace
+  namespace="$(jq -r '.source.namespace // ""' < "$payload")"
+  if [[ -n "$namespace" ]]; then
+    kubectl config set-context "$(kubectl config current-context)" --namespace="$namespace"
+  fi
+}
+
+on_exit() {
+  local code
+
+  code=$?
+  [[ $code -ne 0 ]] && echo && echoerr "Failed with error code $code"
+  return $code
+}
+
+setup_kube "$payload"
+
+
+# resources, for example apply, delete, label.
+kubectl_command="$(jq -r '.params.kubectl // ""' < "$payload")"
+if [[ -n "$kubectl_command" ]]; then
+  load_kubectl_command=" " read -r -a kubectl_arguments <<< "$(eval "echo $kubectl_command")"
+  kubectl "${kubectl_arguments[@]}"
+fi

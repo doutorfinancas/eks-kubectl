@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+exec 3>&1
+exec 1>&2
+
+PAYLOAD=$(mktemp /tmp/resource-check.XXXXXX)
+
+cat > "$PAYLOAD" <&0
+
+TS=$(jq '.version.timestamp // empty' < "$PAYLOAD")
+
+if [ -z "$TS" ]; then
+  echo '[]' >&3
+else
+  jq -n "[
+    { timestamp: $TS }
+  ]" >&3
+fi
