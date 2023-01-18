@@ -27,6 +27,10 @@ jobs:
       - put: eks-kubectl
         params:
           kubectl: get nodes
+      - put: eks-kubectl
+        params:
+          kubectl: rollout restart deployment/my-deployment
+          namespace: my-other-namespace
 ```
 
 ## Why?
@@ -34,18 +38,19 @@ Because we needed a simple script to authenticate to AWS and do a simple command
 We also needed different kubectl versions from the ones maintained, so, here we are
 
 ## Resource definition - Source
-| Parameter Name        | Description                    |
-|-----------------------|--------------------------------|
-| aws_access_key_id     | AWS KEY (mandatory)            |
-| aws_secret_access_key | AWS Secret (mandatory)         |
-| eks_cluster_name      | EKS cluster name (mandatory)   |
-| eks_region            | EKS cluster region (mandatory) |
-| namespace             | Kubernetes namespace (option)  |
+| Parameter Name        | Description                                                                |
+|-----------------------|----------------------------------------------------------------------------|
+| aws_access_key_id     | AWS KEY (mandatory)                                                        |
+| aws_secret_access_key | AWS Secret (mandatory)                                                     |
+| eks_cluster_name      | EKS cluster name (mandatory)                                               |
+| eks_region            | EKS cluster region (mandatory)                                             |
+| namespace             | Kubernetes namespace (optional). This will replace the `default` namespace |
 
 ## PUT - Params
-| Parameter Name | Description             |
-|----------------|-------------------------|
-| kubectl        | Command you wish to run |
+| Parameter Name | Description                                                                                                                                  |
+|----------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| kubectl        | [kubectl command](https://kubernetes.io/docs/reference/kubectl/) you wish to run                                                             |
+| namespace      | [kubernetes namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/), overrides source namespace (optional) |
 
 ## participating
 Want more features? PRs are welcome :)
