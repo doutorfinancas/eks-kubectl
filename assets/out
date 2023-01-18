@@ -34,14 +34,18 @@ setup_kube() {
   aws_eks_region="$(jq -r '.source.eks_region // ""' < "$payload")"
 
   if [[ -n "$aws_eks_cluster_name" && -n "$aws_eks_region" ]]; then
-    aws eks --region "$aws_eks_region" update-kubeconfig --name "$aws_eks_cluster_name"
+    aws eks --region "$aws_eks_region" update-kubeconfig --name "$aws_eks_cluster_name" > /dev/null
   fi
 
   # Optional. The namespace scope. Defaults to default if doesn't specify in kubeconfig.
   local namespace
-  namespace="$(jq -r '.source.namespace // ""' < "$payload")"
+  namespace="$(jq -r '.params.namespace // ""' < "$payload")"
+  if [[ -z "$namespace" ]]; then
+    namespace="$(jq -r '.source.namespace // ""' < "$payload")"
+  fi
+
   if [[ -n "$namespace" ]]; then
-    kubectl config set-context "$(kubectl config current-context)" --namespace="$namespace"
+    kubectl config set-context "$(kubectl config current-context)" --namespace="$namespace" > /dev/null
   fi
 }
 
@@ -76,7 +80,7 @@ setup_kube "$payload"
 kubectl_command="$(jq -r '.params.kubectl // ""' < "$payload")"
 if [[ -n "$kubectl_command" ]]; then
   load_kubectl_command=" " read -r -a kubectl_arguments <<< "$(eval "echo $kubectl_command")"
-  kubectl "${kubectl_arguments[@]}"
+  kubectl "${kubectl_arguments[@]}" > /dev/null
 fi
 
 jq --arg kubectl "$kubectl_command" \
