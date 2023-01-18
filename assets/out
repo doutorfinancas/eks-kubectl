@@ -53,8 +53,24 @@ on_exit() {
   return $code
 }
 
-setup_kube "$payload"
+# current_namespace outputs the current namespace.
+current_namespace() {
+  local namespace
 
+  namespace="$(kubectl config view -o "jsonpath={.contexts[?(@.name==\"$(kubectl config current-context)\")].context.namespace}")"
+  [[ -z "$namespace" ]] && namespace=default
+  echo $namespace
+}
+
+# current_cluster outputs the address and port of the API server.
+current_cluster() {
+  local cluster
+
+  cluster="$(kubectl config view -o "jsonpath={.contexts[?(@.name==\"$(kubectl config current-context)\")].context.cluster}")"
+  kubectl config view -o "jsonpath={.clusters[?(@.name==\"${cluster}\")].cluster.server}"
+}
+
+setup_kube "$payload"
 
 # resources, for example apply, delete, label.
 kubectl_command="$(jq -r '.params.kubectl // ""' < "$payload")"
@@ -62,3 +78,16 @@ if [[ -n "$kubectl_command" ]]; then
   load_kubectl_command=" " read -r -a kubectl_arguments <<< "$(eval "echo $kubectl_command")"
   kubectl "${kubectl_arguments[@]}"
 fi
+
+jq --arg kubectl "$kubectl_command" \
+   --arg namespace "$(current_namespace)" \
+   --arg cluster "$(current_cluster)" \
+    -n '{
+  "version": {
+    "kubectl": $kubectl
+  },
+  "metadata": [
+    {"name": "namespace", "value": $namespace},
+    {"name": "cluster", "value": $cluster}
+  ]
+}'
