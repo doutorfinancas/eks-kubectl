@@ -1,14 +1,14 @@
 # EKS-Kubectl
 Run kubectl commands with AWS authentication and a set of AWS keys
 
-# Usage 
+# Usage
 ```yaml
 resource_types:
 - name: eks-kubectl
   type: registry-image
   source:
     repository: ghcr.io/doutorfinancas/eks-kubectl
-    tag: 1.23
+    tag: 1.30
 
 resources:
 - name: eks-kubectl
@@ -56,4 +56,4 @@ We also needed different kubectl versions from the ones maintained, so, here we 
 Want more features? PRs are welcome :)
 
 ## Versions
-Currently, we have kubectl version 1.23.0 published. Feel free to ask for more
+Currently, we have kubectl version 1.23 and 1.30 published. Feel free to ask for more.
