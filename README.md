@@ -14,6 +14,16 @@ This resource allows you to execute kubectl commands on Amazon EKS clusters, usi
 Because we needed a simple script to authenticate to AWS and do a simple command for us.
 We also needed different kubectl versions from the ones maintained, so, here we are.
 
+## Included Tools
+
+The Docker image includes:
+
+- kubectl (version specified by the tag, e.g., 1.30.14)
+- AWS CLI (v2.8.4)
+- jq, curl, bash, and other utilities for scripting.
+
+This ensures all necessary tools are available for authentication and Kubernetes operations.
+
 ## Usage
 
 To use this resource in your Concourse pipeline, define it as a resource type and resource, then use it in jobs to run kubectl commands.
@@ -24,15 +34,15 @@ resource_types:
   type: registry-image
   source:
     repository: ghcr.io/doutorfinancas/eks-kubectl
-    tag: 1.30
+    tag: 1.30.14
 
 resources:
 - name: eks-kubectl
   type: eks-kubectl
   icon: kubernetes
   source:
-    aws_access_key_id: YOU_AWS_ACCESS_KEY_HERE
-    aws_secret_access_key: YOU_AWS_SECRET_ACCESS_HERE
+    aws_access_key_id: ((data.aws_access_key_id))
+    aws_secret_access_key: ((data.aws_secret_access_key))
     eks_cluster_name: my-cluster
     eks_region: eu-central-1
     namespace: my-namespace
@@ -48,6 +58,18 @@ jobs:
           kubectl: rollout restart deployment/my-deployment
           namespace: my-other-namespace
 ```
+
+## Security Best Practices
+
+Avoid hardcoding sensitive information like AWS credentials in your pipeline YAML. Instead, use Concourse variables or secrets management. For example:
+
+```yaml
+source:
+  aws_access_key_id: ((data.aws_access_key_id))
+  aws_secret_access_key: ((data.aws_secret_access_key))
+```
+
+This keeps your credentials secure and out of version control.
 
 ## Resource definition - Source
 
@@ -83,13 +105,25 @@ To build and push the Docker image:
 - GitHub Personal Access Token (PAT) with `write:packages` scope for pushing to GHCR.
 - Logged in to GHCR: Run `echo YOUR_GITHUB_CLASSIC_TOKEN | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin`.
 
+### How it Works
+
+The helper script (`build-tools/tag.sh`) will prompt you for a Kubernetes **minor** version (e.g., `1.30`). It then automatically resolves the latest stable patch release for that minor version, builds a **multi-arch** Docker image (linux/amd64 and linux/arm64), and pushes it to GHCR tagged with both the full version (e.g., `1.30.14`) and `latest`.
+
+The script will show the exact version it resolved before building. If you want to check beforehand, you can run (this is just an example, you can use any minor version):
+
+```bash
+curl -Lfs --retry 3 "https://dl.k8s.io/release/stable-1.30.txt"
+```
+
+**Important**: The script only accepts minor versions (e.g., `1.30`) and will fail if you provide a patch version (e.g., `1.30.14`).
+
 ### Steps
 
 1. Clone the repository.
 2. Run `make image-push`.
-3. Enter the Kubernetes version number when prompted (e.g., 1.30).
+3. Enter the Kubernetes **minor** version when prompted (e.g., `1.30`).
 
-This will build the image for arm64 and amd64 platforms, tag it with both the mentioned version and `latest`, and push to `ghcr.io/doutorfinancas/eks-kubectl`.
+This will build the image for arm64 and amd64 platforms, tag it with both the full discovered version and `latest`, and push it to `ghcr.io/doutorfinancas/eks-kubectl`.
 
 **Note:** You need push permissions to the repository's package registry. For contributors, consider adjusting the repository in `build-tools/tag.sh` for testing purposes.
 
