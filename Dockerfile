@@ -9,7 +9,6 @@ ARG TARGETARCH
 
 RUN apk add jq curl gcompat zip bash aws-cli
 
-RUN echo "curl -s -LO https://dl.k8s.io/release/v${KUBERNETES_VERSION}/bin/linux/${TARGETARCH}/kubectl"
 # Install kubectl
 RUN curl -s -LO https://dl.k8s.io/release/v${KUBERNETES_VERSION}/bin/linux/${TARGETARCH}/kubectl && \
     chmod +x ./kubectl && \
